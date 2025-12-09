@@ -126,7 +126,7 @@ export default function Home() {
       let content = "";
 
       if (provider === "google") {
-        let modelId = selectedModel;
+        let modelId: string = selectedModel;
         // Fix for specific alias behavior if needed, otherwise pass ID directly
         if (selectedModel === "gemini-1.5-flash") modelId = "gemini-1.5-flash-latest";
         if (selectedModel === "gemini-1.5-pro") modelId = "gemini-1.5-pro-latest";
