@@ -7,6 +7,26 @@
 1. **ADMIN_TOKEN 未设置** - 需要在 Cloudflare Pages 中设置
 2. **输入的 token 不正确** - 前端输入的 token 必须与 Cloudflare 中设置的 ADMIN_TOKEN 完全一致
 
+## 管理 ADMIN_TOKEN 的方式
+
+有两种方式可以设置和管理 ADMIN_TOKEN：
+
+### 方式 1: 通过 Cloudflare Dashboard（推荐，图形界面）
+
+**详细步骤请参考：`ADMIN_TOKEN_DASHBOARD.md`**
+
+快速步骤：
+1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Workers & Pages → Pages → englisheditor → Settings → Environment Variables
+3. 在 Production 环境中添加或编辑 `ADMIN_TOKEN`
+4. 保存后等待 2-5 分钟生效
+
+### 方式 2: 通过命令行
+
+```bash
+npx wrangler pages secret put ADMIN_TOKEN
+```
+
 ## 解决方案
 
 ### 方案 1: 确认 ADMIN_TOKEN 已设置
