@@ -179,7 +179,7 @@ export default function AdminPage() {
         alert(`Successfully generated ${data.codes.length} activation code(s)!`);
       } else {
         if (response.status === 401) {
-          alert("Unauthorized: The admin token is incorrect. Please check:\n\n1. The token you entered matches the ADMIN_TOKEN set in Cloudflare\n2. You have set ADMIN_TOKEN using: npx wrangler pages secret put ADMIN_TOKEN\n3. Wait a few minutes after setting the token for it to take effect\n\nSee ADMIN_SETUP.md for detailed instructions.");
+          alert("Unauthorized: The admin token is incorrect.\n\nTroubleshooting steps:\n1. Check that the token you entered matches ADMIN_TOKEN in Cloudflare Dashboard\n2. Make sure there are no extra spaces before/after the token\n3. Try resetting ADMIN_TOKEN in Cloudflare Dashboard (Settings → Environment Variables)\n4. Wait 2-5 minutes after changing the token\n5. Clear browser Local Storage and try again\n\nFor detailed help, see:\n- ADMIN_TOKEN_TROUBLESHOOTING.md (troubleshooting guide)\n- ADMIN_TOKEN_DASHBOARD.md (Dashboard setup guide)");
         } else {
           alert(data.error || "Failed to generate codes");
         }
