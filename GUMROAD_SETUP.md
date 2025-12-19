@@ -47,39 +47,39 @@
   
   **推荐方案 1：自定义消息（推荐）**
   - 选择 **"Show custom message"**（显示自定义消息）
-  - 在消息框中输入以下内容：
+  - 在消息框中输入以下内容（英文）：
     ```
-    感谢您的购买！
+    Thank you for your purchase!
     
-    您的激活码是：[ACTIVATION_CODE]
+    Your activation code is: [ACTIVATION_CODE]
     
-    激活步骤：
-    1. 访问：https://your-domain.pages.dev/activate
-    2. 输入您的激活码
-    3. 开始使用编辑器！
+    To activate:
+    1. Visit: https://your-domain.pages.dev/activate
+    2. Enter your activation code
+    3. Start using the editor!
     
-    如有任何问题，请联系客服。
+    If you have any questions, please contact support.
     ```
   - **注意**：Gumroad 会自动将 `[ACTIVATION_CODE]` 替换为实际的激活码（如果使用 Gumroad 的自动生成功能）
   
   **推荐方案 2：文本文件**
   - 选择 **"Upload a file"**（上传文件）
-  - 创建一个文本文件（如 `activation-instructions.txt`），内容如下：
+  - 创建一个文本文件（如 `activation-instructions.txt`），内容如下（英文）：
     ```
-    感谢购买 Professional English Editor 激活码！
+    Thank you for purchasing Professional English Editor Activation Code!
     
-    您的激活码：请在购买后页面查看
+    Your activation code: Please check the purchase confirmation page
     
-    如何使用：
-    1. 访问 https://your-domain.pages.dev/activate
-    2. 输入您收到的激活码
-    3. 点击"激活"按钮
-    4. 开始使用编辑器！
+    How to activate:
+    1. Visit: https://your-domain.pages.dev/activate
+    2. Enter your activation code
+    3. Click "Activate" button
+    4. Start using the editor!
     
-    激活码将为您添加 100 次使用次数。
-    激活码无过期时间，可在最多 3 台设备上使用。
+    Your activation code adds 100 uses to your account.
+    The activation code has no expiration date and can be used on up to 3 devices.
     
-    如有问题，请联系客服。
+    If you have any questions, please contact support.
     ```
   - 上传该文件作为购买后交付内容
   
@@ -110,19 +110,19 @@
    - 可以在文件中包含详细的激活说明
    
    **如果选择了"Nothing (for now)"（暂时不提供）**：
-   - 建议在 **"After purchase"** 消息中说明：
+   - 建议在 **"After purchase"** 消息中说明（英文）：
      ```
-     感谢您的购买！
+     Thank you for your purchase!
      
-     我们会在 24 小时内通过邮件发送您的激活码。
-     请检查您的邮箱（包括垃圾邮件文件夹）。
+     We will send your activation code via email within 24 hours.
+     Please check your email (including spam folder).
      
-     激活步骤：
-     1. 访问：https://your-domain.pages.dev/activate
-     2. 输入您收到的激活码
-     3. 开始使用编辑器！
+     To activate:
+     1. Visit: https://your-domain.pages.dev/activate
+     2. Enter the activation code you received
+     3. Start using the editor!
      
-     如有问题，请联系客服。
+     If you have any questions, please contact support.
      ```
 
 3. **Product visibility**: 
