@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock, Key, Gift, Users, BookOpen } from "lucide-react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PROMPT_GENERAL, PROMPT_LEGAL } from "./lib/prompts";
@@ -39,7 +40,11 @@ export default function Home() {
   const [credits, setCredits] = useState<CreditsInfo>(initCredits());
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showInviteUseModal, setShowInviteUseModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
+  
+  // Gumroad product URL - 需要替换为你的实际 Gumroad 产品链接
+  const GUMROAD_PRODUCT_URL = "https://your-username.gumroad.com/l/englisheditor";
 
   // Load credits and history on mount
   useEffect(() => {
@@ -329,6 +334,16 @@ export default function Home() {
               <span>Share</span>
             </button>
 
+            {/* Purchase Button */}
+            <button
+              onClick={() => setShowPurchaseModal(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg transition-all shadow-md hover:shadow-lg"
+              title="Purchase Activation Code"
+            >
+              <Sparkles size={16} />
+              <span>Buy</span>
+            </button>
+
             {/* Activate Button */}
             {credits.totalAvailable === 0 && (
               <button
@@ -482,14 +497,12 @@ export default function Home() {
                             <Gift size={12} />
                             Use Invite
                           </button>
-                          <a
-                            href="https://your-gumroad-link.gumroad.com/l/englisheditor"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors"
+                          <button
+                            onClick={() => setShowPurchaseModal(true)}
+                            className="text-xs bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors"
                           >
                             Buy on Gumroad
-                          </a>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -666,6 +679,127 @@ export default function Home() {
               >
                 Use Invite Code
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purchase Modal */}
+      {showPurchaseModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-purple-600 to-pink-600">
+              <div>
+                <h2 className="text-xl font-bold text-white">Purchase Activation Code</h2>
+                <p className="text-sm text-white/90 mt-1">Get 100 uses of Professional English Editor</p>
+              </div>
+              <button
+                onClick={() => setShowPurchaseModal(false)}
+                className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Product Info */}
+              <div className="mb-6">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Sparkles className="text-blue-600" size={18} />
+                    What You Get
+                  </h3>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={16} />
+                      <span><strong>100 uses</strong> of our AI-powered English editor</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={16} />
+                      <span>Works with both <strong>General</strong> and <strong>Legal</strong> editing modes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={16} />
+                      <span><strong>No expiration date</strong> - use at your own pace</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={16} />
+                      <span>Works on <strong>up to 3 devices</strong></span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={16} />
+                      <span>Instant activation after purchase</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Gumroad Embed */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 p-4 border-b border-gray-200">
+                    <p className="text-sm text-gray-600 text-center">
+                      Complete your purchase securely through Gumroad
+                    </p>
+                  </div>
+                  <div className="bg-white p-4">
+                    {/* Gumroad Overlay Button */}
+                    <a
+                      href={GUMROAD_PRODUCT_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full"
+                      onClick={(e) => {
+                        // Open Gumroad in overlay mode
+                        e.preventDefault();
+                        window.open(
+                          `${GUMROAD_PRODUCT_URL}?wanted=true&embed=true`,
+                          'gumroad-overlay',
+                          'width=600,height=700,scrollbars=yes,resizable=yes'
+                        );
+                      }}
+                    >
+                      <button className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2">
+                        <Sparkles size={20} />
+                        <span>Purchase on Gumroad</span>
+                      </button>
+                    </a>
+                    
+                    {/* Alternative: Direct Link */}
+                    <div className="mt-4 text-center">
+                      <a
+                        href={GUMROAD_PRODUCT_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-gray-600 hover:text-gray-900 underline"
+                      >
+                        Or open in new tab
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <AlertCircle className="text-blue-600" size={16} />
+                  After Purchase
+                </h4>
+                <ol className="text-sm text-gray-700 space-y-1 ml-6 list-decimal">
+                  <li>You'll receive an activation code after purchase</li>
+                  <li>Visit the <Link href="/activate" className="text-blue-600 hover:underline font-medium">activation page</Link> or click "Activate" in the header</li>
+                  <li>Enter your activation code</li>
+                  <li>Start using the editor immediately!</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-xs text-gray-500 text-center">
+                Secure payment processed by Gumroad. Need help? <Link href="/guide" className="text-blue-600 hover:underline">View our guide</Link>
+              </p>
             </div>
           </div>
         </div>
