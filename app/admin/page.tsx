@@ -149,6 +149,8 @@ export default function AdminPage() {
         },
       });
       
+      const responseText = await response.text();
+      
       if (!response.ok) {
         if (response.status === 401) {
           setError("Unauthorized: Invalid admin token");
@@ -157,18 +159,33 @@ export default function AdminPage() {
           localStorage.removeItem("admin_token");
           return;
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError: any) {
+        throw new Error(`Invalid response from server: ${parseError.message}`);
+      }
+      
       if (data.success) {
         setStats(data.stats);
       } else {
         throw new Error(data.error || "Failed to load stats");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load statistics");
-      showToast(err.message || "Failed to load statistics", "error");
+      const errorMessage = err.message || "Failed to load statistics";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
+      console.error("Load stats error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -192,6 +209,8 @@ export default function AdminPage() {
         },
       });
       
+      const responseText = await response.text();
+      
       if (!response.ok) {
         if (response.status === 401) {
           setError("Unauthorized: Invalid admin token");
@@ -200,18 +219,33 @@ export default function AdminPage() {
           localStorage.removeItem("admin_token");
           return;
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError: any) {
+        throw new Error(`Invalid response from server: ${parseError.message}`);
+      }
+      
       if (data.success) {
-        setCodes(data.codes);
+        setCodes(data.codes || []);
       } else {
         throw new Error(data.error || "Failed to load codes");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load codes");
-      showToast(err.message || "Failed to load codes", "error");
+      const errorMessage = err.message || "Failed to load codes";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
+      console.error("Load codes error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -235,8 +269,9 @@ export default function AdminPage() {
       if (generateForm.metadata.trim()) {
         try {
           metadataObj = JSON.parse(generateForm.metadata);
-        } catch (e) {
-          showToast("Invalid JSON in metadata field", "error");
+        } catch (e: any) {
+          const errorMsg = e.message || "Invalid JSON";
+          showToast(`Invalid JSON in metadata field: ${errorMsg}`, "error");
           setIsLoading(false);
           return;
         }
@@ -257,6 +292,9 @@ export default function AdminPage() {
         }),
       });
       
+      // Get response text first to handle both JSON and non-JSON responses
+      const responseText = await response.text();
+      
       if (!response.ok) {
         if (response.status === 401) {
           setError("Unauthorized: Invalid admin token");
@@ -265,13 +303,29 @@ export default function AdminPage() {
           localStorage.removeItem("admin_token");
           return;
         }
-        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        
+        // Try to parse error response as JSON
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If not JSON, use the raw text or status message
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
+      // Parse successful response
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError: any) {
+        throw new Error(`Invalid response from server: ${parseError.message}`);
+      }
+      
       if (data.success) {
-        setGeneratedCodes(data.codes);
+        setGeneratedCodes(data.codes || []);
         setGenerateForm({ ...generateForm, count: 1, metadata: "" });
         showToast(`Successfully generated ${data.codes.length} activation code(s)!`, "success");
         // Auto-load codes list
@@ -280,8 +334,10 @@ export default function AdminPage() {
         throw new Error(data.error || "Failed to generate codes");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to generate codes");
-      showToast(err.message || "Failed to generate codes", "error");
+      const errorMessage = err.message || "Failed to generate codes";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
+      console.error("Generate error:", err);
     } finally {
       setIsLoading(false);
     }
