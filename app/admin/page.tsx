@@ -77,11 +77,13 @@ export default function AdminPage() {
   }, []);
 
   const handleLogin = () => {
-    if (!token.trim()) {
+    const trimmedToken = token.trim();
+    if (!trimmedToken) {
       alert("Please enter admin token");
       return;
     }
-    localStorage.setItem("admin_token", token);
+    localStorage.setItem("admin_token", trimmedToken);
+    setToken(trimmedToken); // Update state with trimmed token
     setIsAuthenticated(true);
     if (activeTab === "stats") {
       loadStats();
@@ -223,11 +225,14 @@ export default function AdminPage() {
               <input
                 type="password"
                 value={token}
-                onChange={(e) => setToken(e.target.value)}
+                onChange={(e) => setToken(e.target.value.trim())}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin()}
                 placeholder="Enter admin token"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
+              <p className="mt-2 text-xs text-gray-500">
+                💡 Token incorrect? See <code className="bg-gray-100 px-1 rounded">RESET_ADMIN_TOKEN.md</code> to reset it via Cloudflare Dashboard
+              </p>
             </div>
             <button
               onClick={handleLogin}
