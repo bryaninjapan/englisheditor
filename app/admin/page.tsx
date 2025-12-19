@@ -111,7 +111,11 @@ export default function AdminPage() {
       if (data.success) {
         setStats(data.stats);
       } else {
-        alert(data.error || "Failed to load stats");
+        if (response.status === 401) {
+          alert("Unauthorized: The admin token is incorrect. Please check your token and try again.");
+        } else {
+          alert(data.error || "Failed to load stats");
+        }
       }
     } catch (err: any) {
       alert("Error loading stats: " + err.message);
@@ -139,7 +143,11 @@ export default function AdminPage() {
       if (data.success) {
         setCodes(data.codes);
       } else {
-        alert(data.error || "Failed to load codes");
+        if (response.status === 401) {
+          alert("Unauthorized: The admin token is incorrect. Please check your token and try again.");
+        } else {
+          alert(data.error || "Failed to load codes");
+        }
       }
     } catch (err: any) {
       alert("Error loading codes: " + err.message);
@@ -170,7 +178,11 @@ export default function AdminPage() {
         setGenerateForm({ ...generateForm, count: 1 });
         alert(`Successfully generated ${data.codes.length} activation code(s)!`);
       } else {
-        alert(data.error || "Failed to generate codes");
+        if (response.status === 401) {
+          alert("Unauthorized: The admin token is incorrect. Please check:\n\n1. The token you entered matches the ADMIN_TOKEN set in Cloudflare\n2. You have set ADMIN_TOKEN using: npx wrangler pages secret put ADMIN_TOKEN\n3. Wait a few minutes after setting the token for it to take effect\n\nSee ADMIN_SETUP.md for detailed instructions.");
+        } else {
+          alert(data.error || "Failed to generate codes");
+        }
       }
     } catch (err: any) {
       alert("Error generating codes: " + err.message);
