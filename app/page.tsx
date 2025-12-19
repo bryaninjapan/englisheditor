@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import { PROMPT_GENERAL, PROMPT_LEGAL } from "./lib/prompts";
 import { cn } from "./lib/utils";
 
-type ModelType = "gemini-3-pro-preview" | "gemini-2.5-pro" | "gemini-2.5-flash" | "gemini-2.0-flash-exp" | "gemini-1.5-flash" | "gemini-1.5-pro";
+type ModelType = "gemini-3-pro-preview";
 
 interface HistoryRecord {
   id: string;
@@ -18,21 +18,14 @@ interface HistoryRecord {
   timestamp: number;
 }
 
-const MODELS: { id: ModelType; name: string }[] = [
-  { id: "gemini-3-pro-preview", name: "Gemini 3 Pro (Preview)" },
-  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
-  { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash (Exp)" },
-  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
-  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
-];
+// 固定使用 Gemini 3 Pro Preview 模型
+const DEFAULT_MODEL: ModelType = "gemini-3-pro-preview";
 
 export default function Home() {
   // State
   const [text, setText] = useState("");
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<ModelType>("gemini-3-pro-preview");
   const [mode, setMode] = useState<"general" | "legal">("general");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -75,7 +68,7 @@ export default function Home() {
         body: JSON.stringify({
           text: text,
           systemPrompt: systemPrompt,
-          model: selectedModel,
+          model: DEFAULT_MODEL,
         }),
       });
 
@@ -95,7 +88,7 @@ export default function Home() {
         input: text,
         output: content,
         mode: mode,
-        model: selectedModel,
+        model: DEFAULT_MODEL,
         timestamp: Date.now(),
       };
 
@@ -130,7 +123,6 @@ export default function Home() {
     setText(record.input);
     setResult(record.output);
     setMode(record.mode);
-    setSelectedModel(record.model);
     setShowHistory(false);
   };
 
@@ -193,20 +185,6 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Professional English Editor</h1>
           </div>
           <div className="flex items-center gap-4">
-             {/* Model Selector in Header */}
-             <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                <span className="text-gray-400">Model:</span>
-                <select 
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value as ModelType)}
-                  className="bg-transparent font-medium text-gray-800 outline-none cursor-pointer"
-                >
-                  {MODELS.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-             </div>
-
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors relative"
@@ -255,19 +233,6 @@ export default function Home() {
               Legal Professional
             </button>
           </div>
-          
-           {/* Mobile Model Selector */}
-           <div className="sm:hidden w-full max-w-xs">
-              <select 
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value as ModelType)}
-                  className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {MODELS.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[calc(100vh-12rem)]">
@@ -447,7 +412,7 @@ export default function Home() {
                               {record.mode === "legal" ? "Legal" : "General"}
                             </span>
                             <span className="text-xs text-gray-500 truncate">
-                              {MODELS.find(m => m.id === record.model)?.name || record.model}
+                              Gemini 3 Pro
                             </span>
                           </div>
                           <div className="flex items-center gap-1 text-xs text-gray-400">

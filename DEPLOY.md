@@ -22,15 +22,29 @@ npx wrangler login
 
 这会打开浏览器，让你登录 Cloudflare 账号。
 
-### 3. 设置 Gemini API Key
+### 3. 创建 Cloudflare Pages 项目
+
+首先，你需要先创建一个 Pages 项目（如果还没有）：
 
 ```bash
-npx wrangler secret put GEMINI_API_KEY
+npx wrangler pages project create englisheditor
 ```
 
-当提示时，粘贴你的 Gemini API Key（格式：`AIza...`）
+### 4. 设置 Gemini API Key
 
-### 4. 构建项目
+**重要：** 对于 Cloudflare Pages，需要使用 `pages secret put` 命令：
+
+```bash
+npx wrangler pages secret put GEMINI_API_KEY
+```
+
+当提示时：
+1. 选择你的 Pages 项目（`englisheditor`）
+2. 粘贴你的 Gemini API Key（格式：`AIza...`）
+
+**注意：** 不要在命令中直接输入 API key，这是不安全的。应该使用交互式输入。
+
+### 5. 构建项目
 
 ```bash
 npm run build
@@ -38,7 +52,7 @@ npm run build
 
 这会生成 `out` 目录，包含静态文件。
 
-### 5. 部署到 Cloudflare Pages
+### 6. 部署到 Cloudflare Pages
 
 ```bash
 npm run deploy
@@ -50,7 +64,7 @@ npm run deploy
 npx wrangler pages deploy out
 ```
 
-### 6. 在 Cloudflare Dashboard 中配置
+### 7. 在 Cloudflare Dashboard 中配置
 
 1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. 进入 Workers & Pages
@@ -79,8 +93,10 @@ npm run pages:dev
 如果以后需要更新 API Key：
 
 ```bash
-npx wrangler secret put GEMINI_API_KEY
+npx wrangler pages secret put GEMINI_API_KEY
 ```
+
+选择你的 Pages 项目，然后输入新的 API Key。
 
 ## 注意事项
 
@@ -94,8 +110,10 @@ npx wrangler secret put GEMINI_API_KEY
 
 1. 检查 API Key 是否正确设置：
    ```bash
-   npx wrangler secret list
+   npx wrangler pages secret list
    ```
+   
+   注意：这只会显示 secret 名称列表，不会显示值（出于安全考虑）。
 
 2. 检查 Worker 日志：
    - 在 Cloudflare Dashboard 中查看 Workers & Pages
