@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock, Key } from "lucide-react";
+import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock, Key, Gift, Users } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PROMPT_GENERAL, PROMPT_LEGAL } from "./lib/prompts";
 import { generateDeviceFingerprint } from "./lib/deviceFingerprint";
+import { initCredits, syncCreditsFromServer, deductLocalCredit, getLocalCredits, type CreditsInfo } from "./lib/credits";
 import { cn } from "./lib/utils";
 
 type ModelType = "gemini-3-pro-preview";
@@ -35,12 +36,14 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [isActivated, setIsActivated] = useState<boolean | null>(null); // null = checking, true/false = checked
-  const [isCheckingActivation, setIsCheckingActivation] = useState(true);
+  const [credits, setCredits] = useState<CreditsInfo>(initCredits());
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showInviteUseModal, setShowInviteUseModal] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
 
-  // Check activation status on mount
+  // Load credits and history on mount
   useEffect(() => {
-    checkActivationStatus();
+    loadCredits();
     const storedHistory = localStorage.getItem("editor_history");
     if (storedHistory) {
       try {
@@ -52,23 +55,22 @@ export default function Home() {
     }
   }, []);
 
-  // Check activation status
-  const checkActivationStatus = async () => {
+  // Load credits from server
+  const loadCredits = async () => {
     try {
       const deviceFingerprint = generateDeviceFingerprint();
-      const response = await fetch("/api/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceFingerprint }),
-      });
-
-      const data = await response.json();
-      setIsActivated(data.activated === true);
+      const serverCredits = await syncCreditsFromServer(deviceFingerprint);
+      if (serverCredits) {
+        setCredits(serverCredits);
+      } else {
+        // 如果同步失败，使用本地缓存
+        const local = getLocalCredits();
+        if (local) {
+          setCredits(local);
+        }
+      }
     } catch (err) {
-      console.error("Failed to check activation:", err);
-      setIsActivated(false);
-    } finally {
-      setIsCheckingActivation(false);
+      console.error("Failed to load credits:", err);
     }
   };
 
@@ -79,9 +81,9 @@ export default function Home() {
       return;
     }
 
-    // Check activation if not already checked
-    if (isActivated === false) {
-      setError("Please activate your device first.");
+    // Check if user has available credits
+    if (credits.totalAvailable <= 0) {
+      setError("No credits remaining. Please use an activation code or invite code.");
       return;
     }
 
@@ -92,6 +94,10 @@ export default function Home() {
     try {
       const systemPrompt = mode === "legal" ? PROMPT_LEGAL : PROMPT_GENERAL;
       const deviceFingerprint = generateDeviceFingerprint();
+
+      // Optimistically deduct credit locally
+      const updatedCredits = deductLocalCredit(credits);
+      setCredits(updatedCredits);
 
       // Call Cloudflare Worker API
       const response = await fetch('/api/gemini', {
@@ -108,12 +114,15 @@ export default function Home() {
       });
 
       if (!response.ok) {
+        // If failed, restore the credit
+        setCredits(credits);
+        
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || `Request failed with status ${response.status}`;
         
-        // If activation error, update activation status
-        if (errorData.activated === false || response.status === 403) {
-          setIsActivated(false);
+        // If credits error, reload credits from server
+        if (errorData.needsActivation || response.status === 403) {
+          await loadCredits();
         }
         
         throw new Error(errorMessage);
@@ -121,6 +130,20 @@ export default function Home() {
 
       const data = await response.json();
       const content = data.content || "No content returned.";
+
+      // Update credits from server response
+      if (data.remainingCredits !== undefined) {
+        const serverCredits: CreditsInfo = {
+          remainingCredits: data.remainingCredits || 0,
+          freeTrialsUsed: data.freeTrialsUsed || 0,
+          freeTrialsRemaining: data.freeTrialsRemaining || 0,
+          totalAvailable: data.totalAvailable || 0,
+        };
+        setCredits(serverCredits);
+        // Save to localStorage
+        const { saveLocalCredits } = await import('./lib/credits');
+        saveLocalCredits(serverCredits);
+      }
 
       setResult(content);
 
@@ -199,6 +222,57 @@ export default function Home() {
     return date.toLocaleDateString();
   };
 
+  // Generate invite code
+  const handleGenerateInvite = async () => {
+    try {
+      const deviceFingerprint = generateDeviceFingerprint();
+      const response = await fetch('/api/invite/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceFingerprint }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setInviteCode(data.inviteCode);
+        setShowInviteModal(true);
+      } else {
+        alert(data.error || 'Failed to generate invite code');
+      }
+    } catch (err: any) {
+      alert('Error generating invite code: ' + err.message);
+    }
+  };
+
+  // Use invite code
+  const handleUseInvite = async () => {
+    if (!inviteCode.trim()) {
+      alert('Please enter an invite code');
+      return;
+    }
+
+    try {
+      const deviceFingerprint = generateDeviceFingerprint();
+      const response = await fetch('/api/invite/use', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: inviteCode.trim(), deviceFingerprint }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(data.message || 'Invite code used successfully!');
+        setShowInviteUseModal(false);
+        setInviteCode('');
+        await loadCredits(); // Reload credits
+      } else {
+        alert(data.error || 'Failed to use invite code');
+      }
+    } catch (err: any) {
+      alert('Error using invite code: ' + err.message);
+    }
+  };
+
   // Export to Markdown
   const handleExportMarkdown = () => {
     if (!result) return;
@@ -227,7 +301,36 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Professional English Editor</h1>
           </div>
           <div className="flex items-center gap-4">
-            {isActivated === false && (
+            {/* Credits Display */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg">
+              <Sparkles className="text-blue-600" size={16} />
+              <span className="text-sm font-medium text-blue-700">
+                {credits.totalAvailable} uses
+              </span>
+            </div>
+
+            {/* Invite Button */}
+            <button
+              onClick={() => setShowInviteUseModal(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+              title="Use Invite Code"
+            >
+              <Gift size={16} />
+              <span>Invite</span>
+            </button>
+
+            {/* Generate Invite Button */}
+            <button
+              onClick={handleGenerateInvite}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+              title="Generate Invite Code"
+            >
+              <Users size={16} />
+              <span>Share</span>
+            </button>
+
+            {/* Activate Button */}
+            {credits.totalAvailable === 0 && (
               <button
                 onClick={() => router.push("/activate")}
                 className="px-3 py-1.5 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors flex items-center gap-2"
@@ -235,12 +338,6 @@ export default function Home() {
                 <Key size={16} />
                 Activate
               </button>
-            )}
-            {isActivated === true && (
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <CheckCircle2 size={16} />
-                <span className="hidden sm:inline">Activated</span>
-              </div>
             )}
             
             <button
@@ -314,63 +411,82 @@ export default function Home() {
               spellCheck="false"
             />
             <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <button
-                onClick={handlePolishing}
-                disabled={isLoading || isActivated === false}
-                className={cn(
-                  "w-full py-3 px-4 rounded-xl font-semibold text-white shadow-md transition-all flex items-center justify-center gap-2",
-                  isLoading
-                    ? "bg-blue-400 cursor-wait"
-                    : isActivated === false
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg active:transform active:scale-[0.98]"
-                )}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Polishing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={18} />
-                    Start Polishing
-                  </>
-                )}
-              </button>
-              
-              {isActivated === false && (
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="text-yellow-600 mt-0.5 shrink-0" size={16} />
-                    <div className="flex-1">
-                      <p className="text-sm text-yellow-800 font-medium mb-1">
-                        Activation Required
-                      </p>
-                      <p className="text-xs text-yellow-700 mb-2">
-                        Please activate your device to use this service.
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => router.push("/activate")}
-                          className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
-                        >
-                          <Key size={12} />
-                          Activate Now
-                        </button>
-                        <a
-                          href="https://your-gumroad-link.gumroad.com/l/englisheditor"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
-                        >
-                          Buy on Gumroad
-                        </a>
+              <div className="space-y-3">
+                {/* Credits Info */}
+                <div className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                  <span>Remaining uses:</span>
+                  <span className="font-semibold text-blue-600">
+                    {credits.totalAvailable} {credits.freeTrialsRemaining > 0 && (
+                      <span className="text-green-600">({credits.freeTrialsRemaining} free trial{credits.freeTrialsRemaining > 1 ? 's' : ''})</span>
+                    )}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handlePolishing}
+                  disabled={isLoading || credits.totalAvailable <= 0}
+                  className={cn(
+                    "w-full py-3 px-4 rounded-xl font-semibold text-white shadow-md transition-all flex items-center justify-center gap-2",
+                    isLoading
+                      ? "bg-blue-400 cursor-wait"
+                      : credits.totalAvailable <= 0
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg active:transform active:scale-[0.98]"
+                  )}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Polishing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={18} />
+                      Start Polishing
+                    </>
+                  )}
+                </button>
+
+                {credits.totalAvailable === 0 && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="text-yellow-600 mt-0.5 shrink-0" size={16} />
+                      <div className="flex-1">
+                        <p className="text-sm text-yellow-800 font-medium mb-1">
+                          No credits remaining
+                        </p>
+                        <p className="text-xs text-yellow-700 mb-2">
+                          Use an activation code or invite code to continue.
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => router.push("/activate")}
+                            className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
+                          >
+                            <Key size={12} />
+                            Activate Code
+                          </button>
+                          <button
+                            onClick={() => setShowInviteUseModal(true)}
+                            className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
+                          >
+                            <Gift size={12} />
+                            Use Invite
+                          </button>
+                          <a
+                            href="https://your-gumroad-link.gumroad.com/l/englisheditor"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors"
+                          >
+                            Buy on Gumroad
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
@@ -442,6 +558,109 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Invite Code Generate Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-gray-900">Your Invite Code</h2>
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteCode("");
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                <code className="text-lg font-mono font-bold text-gray-900 break-all">
+                  {inviteCode}
+                </code>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Share this code with your friends. When they use it, both of you will receive 3 free uses!
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(inviteCode);
+                    alert("Invite code copied to clipboard!");
+                  }}
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Copy Code
+                </button>
+                <button
+                  onClick={() => {
+                    setShowInviteModal(false);
+                    setInviteCode("");
+                  }}
+                  className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Code Use Modal */}
+      {showInviteUseModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-gray-900">Use Invite Code</h2>
+              <button
+                onClick={() => {
+                  setShowInviteUseModal(false);
+                  setInviteCode("");
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter Invite Code
+                </label>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => {
+                    let value = e.target.value.replace(/[^A-Z0-9-]/gi, "").toUpperCase();
+                    if (value.length > 15) value = value.substring(0, 15);
+                    setInviteCode(value);
+                  }}
+                  placeholder="XXXX-XXXX-XXXX"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  You can only use one invite code. Both you and the inviter will receive 3 free uses.
+                </p>
+              </div>
+              <button
+                onClick={handleUseInvite}
+                disabled={!inviteCode.trim()}
+                className={cn(
+                  "w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors",
+                  !inviteCode.trim()
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-purple-600 hover:bg-purple-700"
+                )}
+              >
+                Use Invite Code
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History Sidebar */}
       {showHistory && (

@@ -12,24 +12,27 @@ interface ActivationCode {
   code: string;
   type: string;
   status: string;
-  max_uses: number;
-  current_uses: number;
-  expires_at: number | null;
+  credits: number;
+  used_count: number;
   created_at: number;
   created_by: string | null;
   metadata: any;
-  deviceCount: number;
+  usageCount: number;
+  totalCreditsGiven: number;
 }
 
 interface Stats {
   totalCodes: number;
-  totalDevices: number;
-  activeDevices: number;
-  usedCodes: number;
+  totalUsers: number;
+  activeUsers: number;
+  totalUsage: number;
+  totalCreditsDistributed: number;
   recentActivations: number;
+  totalInviteCodes: number;
+  usedInviteCodes: number;
+  totalInviteUsage: number;
   byStatus: Record<string, number>;
   byType: Record<string, number>;
-  devicesByType: Record<string, number>;
 }
 
 export default function AdminPage() {
@@ -43,9 +46,8 @@ export default function AdminPage() {
   
   // Generate form state
   const [generateForm, setGenerateForm] = useState({
-    type: "purchase",
-    maxUses: 1,
-    expiresDays: "",
+    type: "paid",
+    credits: 100,
     count: 1,
     metadata: "",
   });
@@ -157,8 +159,7 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           type: generateForm.type,
-          maxUses: generateForm.maxUses,
-          expiresDays: generateForm.expiresDays ? parseInt(generateForm.expiresDays) : null,
+          credits: generateForm.credits,
           count: generateForm.count,
           metadata: generateForm.metadata ? JSON.parse(generateForm.metadata) : null,
         }),
@@ -311,38 +312,25 @@ export default function AdminPage() {
                     value={generateForm.type}
                     onChange={(e) => setGenerateForm({ ...generateForm, type: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    disabled
                   >
-                    <option value="purchase">Purchase</option>
-                    <option value="invite">Invite</option>
-                    <option value="trial">Trial</option>
-                    <option value="admin">Admin</option>
+                    <option value="paid">Paid (100 credits)</option>
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">Each activation code gives 100 uses</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Max Uses
+                    Credits per Code
                   </label>
                   <input
                     type="number"
-                    value={generateForm.maxUses}
-                    onChange={(e) => setGenerateForm({ ...generateForm, maxUses: parseInt(e.target.value) || 1 })}
+                    value={generateForm.credits}
+                    onChange={(e) => setGenerateForm({ ...generateForm, credits: parseInt(e.target.value) || 100 })}
                     min="1"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Expires (Days, optional)
-                  </label>
-                  <input
-                    type="number"
-                    value={generateForm.expiresDays}
-                    onChange={(e) => setGenerateForm({ ...generateForm, expiresDays: e.target.value })}
-                    placeholder="Leave empty for no expiration"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  />
+                  <p className="mt-1 text-xs text-gray-500">Default: 100 uses per activation code</p>
                 </div>
 
                 <div>
@@ -454,10 +442,7 @@ export default function AdminPage() {
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   >
                     <option value="">All Types</option>
-                    <option value="purchase">Purchase</option>
-                    <option value="invite">Invite</option>
-                    <option value="trial">Trial</option>
-                    <option value="admin">Admin</option>
+                    <option value="paid">Paid</option>
                   </select>
                   <button
                     onClick={loadCodes}
@@ -480,9 +465,9 @@ export default function AdminPage() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uses</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Devices</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Credits</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Used</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Given</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                       </tr>
                     </thead>
@@ -520,11 +505,11 @@ export default function AdminPage() {
                               {code.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm">
-                            {code.current_uses} / {code.max_uses}
+                          <td className="px-4 py-3 text-sm font-semibold">
+                            {code.credits}
                           </td>
-                          <td className="px-4 py-3 text-sm">{code.deviceCount}</td>
-                          <td className="px-4 py-3 text-sm">{formatDate(code.expires_at)}</td>
+                          <td className="px-4 py-3 text-sm">{code.usageCount}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-green-600">{code.totalCreditsGiven || 0}</td>
                           <td className="px-4 py-3 text-sm">{formatTimestamp(code.created_at)}</td>
                         </tr>
                       ))}
@@ -548,16 +533,28 @@ export default function AdminPage() {
                     <div className="text-sm text-gray-600">Total Codes</div>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{stats.totalDevices}</div>
-                    <div className="text-sm text-gray-600">Total Devices</div>
+                    <div className="text-2xl font-bold text-green-600">{stats.totalUsers}</div>
+                    <div className="text-sm text-gray-600">Total Users</div>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">{stats.activeDevices}</div>
-                    <div className="text-sm text-gray-600">Active Devices (7d)</div>
+                    <div className="text-2xl font-bold text-purple-600">{stats.activeUsers}</div>
+                    <div className="text-sm text-gray-600">Active Users (7d)</div>
                   </div>
                   <div className="bg-orange-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">{stats.recentActivations}</div>
-                    <div className="text-sm text-gray-600">Recent (30d)</div>
+                    <div className="text-2xl font-bold text-orange-600">{stats.totalUsage}</div>
+                    <div className="text-sm text-gray-600">Total Usage</div>
+                  </div>
+                  <div className="bg-indigo-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-indigo-600">{stats.totalCreditsDistributed}</div>
+                    <div className="text-sm text-gray-600">Credits Distributed</div>
+                  </div>
+                  <div className="bg-teal-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-teal-600">{stats.totalInviteCodes}</div>
+                    <div className="text-sm text-gray-600">Invite Codes</div>
+                  </div>
+                  <div className="bg-cyan-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-cyan-600">{stats.usedInviteCodes}</div>
+                    <div className="text-sm text-gray-600">Used Invites</div>
                   </div>
 
                   <div className="md:col-span-2 bg-white p-4 rounded-lg border border-gray-200">
@@ -581,6 +578,21 @@ export default function AdminPage() {
                           <span className="font-semibold">{count}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2 bg-white p-4 rounded-lg border border-gray-200">
+                    <h3 className="font-semibold mb-3">Recent Activations (30d)</h3>
+                    <div className="text-2xl font-bold text-orange-600">{stats.recentActivations}</div>
+                  </div>
+
+                  <div className="md:col-span-2 bg-white p-4 rounded-lg border border-gray-200">
+                    <h3 className="font-semibold mb-3">Invite Code Usage</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Total Invite Uses</span>
+                        <span className="font-semibold">{stats.totalInviteUsage}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

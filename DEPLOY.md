@@ -45,12 +45,14 @@ npx wrangler pages project create englisheditor
 然后初始化数据库结构：
 
 ```bash
-# 创建数据库（本地测试用）
-npx wrangler d1 execute englisheditor-db --local --file=./schema/schema.sql
+# 创建数据库（本地测试用 - 可选）
+npx wrangler d1 execute englisheditor-db --local --file=./schema/schema_v2.sql
 
-# 在生产环境创建数据库
-npx wrangler d1 execute englisheditor-db --file=./schema/schema.sql
+# 在生产环境创建数据库（重要：使用新的 schema_v2.sql）
+npx wrangler d1 execute englisheditor-db --file=./schema/schema_v2.sql
 ```
+
+**注意**：使用新的 `schema_v2.sql` 文件，这是基于使用次数系统的新数据库结构。
 
 ### 5. 设置环境变量（Secrets）
 

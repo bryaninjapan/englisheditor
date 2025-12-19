@@ -42,55 +42,65 @@ export async function onRequestGet(context: {
       'SELECT type, COUNT(*) as count FROM activation_codes GROUP BY type'
     ).all<{ type: string; count: number }>();
 
-    // 总激活设备数
-    const totalDevices = await env.DB.prepare(
-      'SELECT COUNT(DISTINCT device_fingerprint) as count FROM activations'
+    // 总用户数（有使用记录的设备）
+    const totalUsers = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM user_credits'
     ).first<{ count: number }>();
 
-    // 活跃设备数（最近7天使用过）
+    // 活跃用户数（最近7天使用过）
     const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
-    const activeDevices = await env.DB.prepare(
-      'SELECT COUNT(DISTINCT device_fingerprint) as count FROM activations WHERE last_used_at > ?'
+    const activeUsers = await env.DB.prepare(
+      'SELECT COUNT(DISTINCT device_fingerprint) as count FROM usage_logs WHERE used_at > ?'
     ).bind(sevenDaysAgo).first<{ count: number }>();
 
-    // 最近30天的激活数
+    // 最近30天的激活码使用数
     const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
     const recentActivations = await env.DB.prepare(
-      'SELECT COUNT(*) as count FROM activations WHERE activated_at > ?'
+      'SELECT COUNT(*) as count FROM activation_usage WHERE activated_at > ?'
     ).bind(thirtyDaysAgo).first<{ count: number }>();
 
-    // 已使用的激活码数
-    const usedCodes = await env.DB.prepare(
-      'SELECT COUNT(*) as count FROM activation_codes WHERE current_uses >= max_uses OR status = "used"'
+    // 总使用次数
+    const totalUsage = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM usage_logs'
     ).first<{ count: number }>();
 
-    // 已激活的设备统计（按激活码类型）
-    const devicesByType = await env.DB.prepare(
-      `SELECT ac.type, COUNT(DISTINCT a.device_fingerprint) as count
-       FROM activations a
-       JOIN activation_codes ac ON a.activation_code = ac.code
-       WHERE ac.status = 'active'
-       GROUP BY ac.type`
-    ).all<{ type: string; count: number }>();
+    // 邀请码统计
+    const totalInviteCodes = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM invite_codes'
+    ).first<{ count: number }>();
+
+    const usedInviteCodes = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM invite_codes WHERE status = "used"'
+    ).first<{ count: number }>();
+
+    // 邀请码使用记录
+    const totalInviteUsage = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM invite_usage'
+    ).first<{ count: number }>();
+
+    // 总发放的 credits（通过激活码）
+    const totalCreditsDistributed = await env.DB.prepare(
+      'SELECT SUM(credits_added) as total FROM activation_usage'
+    ).first<{ total: number }>();
 
     return new Response(
       JSON.stringify({
         success: true,
         stats: {
           totalCodes: totalCodes?.count || 0,
-          totalDevices: totalDevices?.count || 0,
-          activeDevices: activeDevices?.count || 0,
-          usedCodes: usedCodes?.count || 0,
+          totalUsers: totalUsers?.count || 0,
+          activeUsers: activeUsers?.count || 0,
+          totalUsage: totalUsage?.count || 0,
+          totalCreditsDistributed: totalCreditsDistributed?.total || 0,
           recentActivations: recentActivations?.count || 0,
+          totalInviteCodes: totalInviteCodes?.count || 0,
+          usedInviteCodes: usedInviteCodes?.count || 0,
+          totalInviteUsage: totalInviteUsage?.count || 0,
           byStatus: statusStats.results.reduce((acc, item) => {
             acc[item.status] = item.count;
             return acc;
           }, {} as Record<string, number>),
           byType: typeStats.results.reduce((acc, item) => {
-            acc[item.type] = item.count;
-            return acc;
-          }, {} as Record<string, number>),
-          devicesByType: devicesByType.results.reduce((acc, item) => {
             acc[item.type] = item.count;
             return acc;
           }, {} as Record<string, number>),

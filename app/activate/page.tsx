@@ -9,7 +9,6 @@ import { cn } from "../lib/utils";
 export default function ActivatePage() {
   const router = useRouter();
   const [code, setCode] = useState("");
-  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -27,7 +26,7 @@ export default function ActivatePage() {
     try {
       const deviceFingerprint = generateDeviceFingerprint();
 
-      const response = await fetch("/api/activate", {
+      const response = await fetch("/api/activate-v2", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -35,7 +34,6 @@ export default function ActivatePage() {
         body: JSON.stringify({
           code: code.trim().toUpperCase(),
           deviceFingerprint: deviceFingerprint,
-          userEmail: email.trim() || null,
         }),
       });
 
@@ -45,12 +43,7 @@ export default function ActivatePage() {
         throw new Error(data.error || "Activation failed");
       }
 
-      if (data.activated) {
-        setSuccess(true);
-        setTimeout(() => {
-          router.push("/");
-        }, 2000);
-      } else {
+      if (data.success) {
         setSuccess(true);
         setTimeout(() => {
           router.push("/");
@@ -126,19 +119,9 @@ export default function ActivatePage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email (Optional)
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  We'll use this to send you important updates
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Activation code adds 100 uses</strong> to your account. You can use multiple activation codes to accumulate more uses.
                 </p>
               </div>
 

@@ -38,10 +38,10 @@ export async function onRequestPost(context: {
   }
 
   try {
-    const { type = 'purchase', maxUses = 1, expiresDays, count = 1, metadata } = await request.json();
+    const { type = 'paid', credits = 100, count = 1, metadata } = await request.json();
 
-    if (!type || !['purchase', 'invite', 'trial', 'admin'].includes(type)) {
-      return new Response(JSON.stringify({ error: 'Invalid type. Must be: purchase, invite, trial, or admin' }), {
+    if (!type || type !== 'paid') {
+      return new Response(JSON.stringify({ error: 'Invalid type. Must be: paid' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -55,7 +55,6 @@ export async function onRequestPost(context: {
     }
 
     const codes: string[] = [];
-    const expiresAt = expiresDays ? Math.floor(Date.now() / 1000) + (expiresDays * 24 * 60 * 60) : null;
 
     // 批量生成激活码
     for (let i = 0; i < count; i++) {
@@ -83,12 +82,12 @@ export async function onRequestPost(context: {
         });
       }
 
-      // 插入数据库
+      // 插入数据库（激活码固定给予100次）
       await env.DB.prepare(
-        `INSERT INTO activation_codes (code, type, status, max_uses, expires_at, metadata)
-         VALUES (?, ?, 'active', ?, ?, ?)`
+        `INSERT INTO activation_codes (code, type, status, credits, metadata)
+         VALUES (?, ?, 'active', ?, ?)`
       )
-        .bind(code, type, maxUses, expiresAt, metadata ? JSON.stringify(metadata) : null)
+        .bind(code, type, credits, metadata ? JSON.stringify(metadata) : null)
         .run();
 
       codes.push(code);
@@ -100,8 +99,7 @@ export async function onRequestPost(context: {
         codes,
         count: codes.length,
         type,
-        maxUses,
-        expiresAt,
+        credits,
       }),
       {
         headers: {

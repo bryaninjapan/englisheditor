@@ -70,7 +70,7 @@ export async function onRequestGet(context: {
     bindValues.push(limit, offset);
     const result = await env.DB.prepare(
       `SELECT 
-        id, code, type, status, max_uses, current_uses, expires_at, created_at, created_by, metadata
+        id, code, type, status, credits, used_count, created_at, created_by, metadata
        FROM activation_codes 
        ${whereClause}
        ORDER BY created_at DESC
@@ -80,24 +80,28 @@ export async function onRequestGet(context: {
       code: string;
       type: string;
       status: string;
-      max_uses: number;
-      current_uses: number;
-      expires_at: number | null;
+      credits: number;
+      used_count: number;
       created_at: number;
       created_by: string | null;
       metadata: string | null;
     }>();
 
-    // 获取每个激活码的设备数量
-    const codesWithDeviceCount = await Promise.all(
+    // 获取每个激活码的使用情况
+    const codesWithUsage = await Promise.all(
       result.results.map(async (code) => {
-        const deviceCount = await env.DB.prepare(
-          'SELECT COUNT(*) as count FROM activations WHERE activation_code = ?'
+        const usageCount = await env.DB.prepare(
+          'SELECT COUNT(*) as count FROM activation_usage WHERE activation_code = ?'
         ).bind(code.code).first<{ count: number }>();
+
+        const totalCreditsGiven = await env.DB.prepare(
+          'SELECT SUM(credits_added) as total FROM activation_usage WHERE activation_code = ?'
+        ).bind(code.code).first<{ total: number }>();
 
         return {
           ...code,
-          deviceCount: deviceCount?.count || 0,
+          usageCount: usageCount?.count || 0,
+          totalCreditsGiven: totalCreditsGiven?.total || 0,
           metadata: code.metadata ? JSON.parse(code.metadata) : null,
         };
       })
@@ -106,7 +110,7 @@ export async function onRequestGet(context: {
     return new Response(
       JSON.stringify({
         success: true,
-        codes: codesWithDeviceCount,
+        codes: codesWithUsage,
         pagination: {
           page,
           limit,
