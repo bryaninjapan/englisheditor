@@ -1,16 +1,72 @@
-export async function onRequestPost(context: { request: Request; env: { GEMINI_API_KEY?: string } }) {
+// @ts-ignore - D1Database type is defined in types.d.ts
+/// <reference path="../types.d.ts" />
+
+export async function onRequestPost(context: {
+  request: Request;
+  env: { GEMINI_API_KEY?: string; DB?: D1Database };
+}) {
   const { request, env } = context;
 
   try {
-
-    const { text, systemPrompt, model } = await request.json();
+    const { text, systemPrompt, model, deviceFingerprint } = await request.json();
 
     // 验证输入
     if (!text || !systemPrompt || !model) {
-      return new Response(JSON.stringify({ error: 'Missing required fields: text, systemPrompt, model' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: text, systemPrompt, model' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // 验证激活状态（如果提供了设备指纹和数据库）
+    if (deviceFingerprint && env.DB) {
+      const activation = await env.DB.prepare(
+        `SELECT a.*, ac.status as code_status 
+         FROM activations a
+         JOIN activation_codes ac ON a.activation_code = ac.code
+         WHERE a.device_fingerprint = ?
+         ORDER BY a.activated_at DESC
+         LIMIT 1`
+      ).bind(deviceFingerprint).first<{
+        expires_at: number | null;
+        code_status: string;
+      }>();
+
+      if (!activation || activation.code_status !== 'active') {
+        return new Response(
+          JSON.stringify({
+            error: 'Device not activated. Please activate your device first.',
+            activated: false,
+          }),
+          {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+          }
+        );
+      }
+
+      // 检查是否过期
+      if (activation.expires_at && activation.expires_at < Date.now() / 1000) {
+        return new Response(
+          JSON.stringify({
+            error: 'Activation has expired. Please renew your subscription.',
+            activated: false,
+          }),
+          {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+          }
+        );
+      }
     }
 
     // 从环境变量获取 API key

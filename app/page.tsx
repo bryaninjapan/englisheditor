@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock, Key } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PROMPT_GENERAL, PROMPT_LEGAL } from "./lib/prompts";
+import { generateDeviceFingerprint } from "./lib/deviceFingerprint";
 import { cn } from "./lib/utils";
 
 type ModelType = "gemini-3-pro-preview";
@@ -22,6 +24,8 @@ interface HistoryRecord {
 const DEFAULT_MODEL: ModelType = "gemini-3-pro-preview";
 
 export default function Home() {
+  const router = useRouter();
+  
   // State
   const [text, setText] = useState("");
   const [result, setResult] = useState("");
@@ -31,9 +35,12 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [isActivated, setIsActivated] = useState<boolean | null>(null); // null = checking, true/false = checked
+  const [isCheckingActivation, setIsCheckingActivation] = useState(true);
 
-  // Load History from localStorage on mount
+  // Check activation status on mount
   useEffect(() => {
+    checkActivationStatus();
     const storedHistory = localStorage.getItem("editor_history");
     if (storedHistory) {
       try {
@@ -45,10 +52,36 @@ export default function Home() {
     }
   }, []);
 
+  // Check activation status
+  const checkActivationStatus = async () => {
+    try {
+      const deviceFingerprint = generateDeviceFingerprint();
+      const response = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceFingerprint }),
+      });
+
+      const data = await response.json();
+      setIsActivated(data.activated === true);
+    } catch (err) {
+      console.error("Failed to check activation:", err);
+      setIsActivated(false);
+    } finally {
+      setIsCheckingActivation(false);
+    }
+  };
+
   // Handle Polishing
   const handlePolishing = async () => {
     if (!text.trim()) {
       alert("Please enter some text to polish.");
+      return;
+    }
+
+    // Check activation if not already checked
+    if (isActivated === false) {
+      setError("Please activate your device first.");
       return;
     }
 
@@ -58,6 +91,7 @@ export default function Home() {
 
     try {
       const systemPrompt = mode === "legal" ? PROMPT_LEGAL : PROMPT_GENERAL;
+      const deviceFingerprint = generateDeviceFingerprint();
 
       // Call Cloudflare Worker API
       const response = await fetch('/api/gemini', {
@@ -69,12 +103,20 @@ export default function Home() {
           text: text,
           systemPrompt: systemPrompt,
           model: DEFAULT_MODEL,
+          deviceFingerprint: deviceFingerprint,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Request failed with status ${response.status}`);
+        const errorMessage = errorData.error || `Request failed with status ${response.status}`;
+        
+        // If activation error, update activation status
+        if (errorData.activated === false || response.status === 403) {
+          setIsActivated(false);
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -185,6 +227,22 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Professional English Editor</h1>
           </div>
           <div className="flex items-center gap-4">
+            {isActivated === false && (
+              <button
+                onClick={() => router.push("/activate")}
+                className="px-3 py-1.5 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Key size={16} />
+                Activate
+              </button>
+            )}
+            {isActivated === true && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle2 size={16} />
+                <span className="hidden sm:inline">Activated</span>
+              </div>
+            )}
+            
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors relative"
@@ -197,7 +255,6 @@ export default function Home() {
                 </span>
               )}
             </button>
-
           </div>
         </div>
       </header>
@@ -259,11 +316,13 @@ export default function Home() {
             <div className="p-4 border-t border-gray-100 bg-gray-50">
               <button
                 onClick={handlePolishing}
-                disabled={isLoading}
+                disabled={isLoading || isActivated === false}
                 className={cn(
                   "w-full py-3 px-4 rounded-xl font-semibold text-white shadow-md transition-all flex items-center justify-center gap-2",
                   isLoading
                     ? "bg-blue-400 cursor-wait"
+                    : isActivated === false
+                    ? "bg-gray-400 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg active:transform active:scale-[0.98]"
                 )}
               >
@@ -279,6 +338,39 @@ export default function Home() {
                   </>
                 )}
               </button>
+              
+              {isActivated === false && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="text-yellow-600 mt-0.5 shrink-0" size={16} />
+                    <div className="flex-1">
+                      <p className="text-sm text-yellow-800 font-medium mb-1">
+                        Activation Required
+                      </p>
+                      <p className="text-xs text-yellow-700 mb-2">
+                        Please activate your device to use this service.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => router.push("/activate")}
+                          className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
+                        >
+                          <Key size={12} />
+                          Activate Now
+                        </button>
+                        <a
+                          href="https://your-gumroad-link.gumroad.com/l/englisheditor"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
+                        >
+                          Buy on Gumroad
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

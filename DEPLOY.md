@@ -30,9 +30,33 @@ npx wrangler login
 npx wrangler pages project create englisheditor
 ```
 
-### 4. 设置 Gemini API Key
+### 4. 创建 D1 数据库
+
+首先需要在 Cloudflare Dashboard 创建 D1 数据库：
+
+1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 进入 Workers & Pages → D1
+3. 点击 "Create database"
+4. 数据库名称：`englisheditor-db`
+5. 创建后，复制数据库 ID
+
+更新 `wrangler.toml` 文件中的 `database_id`（两处都需要更新）
+
+然后初始化数据库结构：
+
+```bash
+# 创建数据库（本地测试用）
+npx wrangler d1 execute englisheditor-db --local --file=./schema/schema.sql
+
+# 在生产环境创建数据库
+npx wrangler d1 execute englisheditor-db --file=./schema/schema.sql
+```
+
+### 5. 设置环境变量（Secrets）
 
 **重要：** 对于 Cloudflare Pages，需要使用 `pages secret put` 命令：
+
+#### 设置 Gemini API Key
 
 ```bash
 npx wrangler pages secret put GEMINI_API_KEY
@@ -42,9 +66,22 @@ npx wrangler pages secret put GEMINI_API_KEY
 1. 选择你的 Pages 项目（`englisheditor`）
 2. 粘贴你的 Gemini API Key（格式：`AIza...`）
 
-**注意：** 不要在命令中直接输入 API key，这是不安全的。应该使用交互式输入。
+#### 设置管理员 Token（用于后台管理）
 
-### 5. 构建项目
+```bash
+npx wrangler pages secret put ADMIN_TOKEN
+```
+
+当提示时：
+1. 选择你的 Pages 项目
+2. 输入一个强密码作为管理员 token（建议使用随机生成的字符串）
+
+**注意：** 
+- 不要在命令中直接输入敏感信息，应该使用交互式输入
+- 管理员 token 用于访问 `/admin` 后台管理界面
+- 建议使用密码生成器生成强密码
+
+### 6. 构建项目
 
 ```bash
 npm run build
@@ -52,7 +89,7 @@ npm run build
 
 这会生成 `out` 目录，包含静态文件。
 
-### 6. 部署到 Cloudflare Pages
+### 7. 部署到 Cloudflare Pages
 
 ```bash
 npm run deploy
@@ -64,7 +101,7 @@ npm run deploy
 npx wrangler pages deploy out
 ```
 
-### 7. 在 Cloudflare Dashboard 中配置
+### 8. 在 Cloudflare Dashboard 中配置
 
 1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. 进入 Workers & Pages
@@ -88,15 +125,39 @@ npm run pages:dev
 
 这会启动本地服务器，包括 Pages Functions，方便测试 API 路由。
 
-## 更新 API Key
+## 更新环境变量
 
-如果以后需要更新 API Key：
+如果以后需要更新环境变量：
 
 ```bash
+# 更新 API Key
 npx wrangler pages secret put GEMINI_API_KEY
+
+# 更新管理员 Token
+npx wrangler pages secret put ADMIN_TOKEN
 ```
 
-选择你的 Pages 项目，然后输入新的 API Key。
+选择你的 Pages 项目，然后输入新的值。
+
+## 后台管理
+
+访问 `/admin` 路径进入后台管理界面：
+
+1. 输入你在环境变量中设置的 `ADMIN_TOKEN`
+2. 登录后可以：
+   - **Generate Codes**: 生成新的激活码
+   - **Code List**: 查看和管理所有激活码
+   - **Statistics**: 查看统计信息
+
+## Gumroad 集成
+
+在 `app/activate/page.tsx` 和 `app/page.tsx` 中，你需要将 Gumroad 链接替换为你的实际产品链接：
+
+```typescript
+href="https://your-gumroad-link.gumroad.com/l/englisheditor"
+```
+
+替换为你的实际 Gumroad 产品链接。
 
 ## 注意事项
 

@@ -2,6 +2,17 @@ name = "englisheditor"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "out"
 
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "englisheditor-db"
+database_id = "" # 需要在 Cloudflare Dashboard 创建数据库后填入
+
 [env.production]
 compatibility_date = "2024-01-01"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "englisheditor-db"
+database_id = "" # 需要在 Cloudflare Dashboard 创建数据库后填入
 
