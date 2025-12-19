@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import { PROMPT_GENERAL, PROMPT_LEGAL } from "./lib/prompts";
 import { generateDeviceFingerprint } from "./lib/deviceFingerprint";
 import { initCredits, syncCreditsFromServer, deductLocalCredit, getLocalCredits, type CreditsInfo } from "./lib/credits";
+import { GUMROAD_PRODUCT_URL } from "./lib/config";
 import { cn } from "./lib/utils";
 
 type ModelType = "gemini-3-pro-preview";
@@ -42,9 +43,6 @@ export default function Home() {
   const [showInviteUseModal, setShowInviteUseModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
-  
-  // Gumroad product URL - 需要替换为你的实际 Gumroad 产品链接
-  const GUMROAD_PRODUCT_URL = "https://your-username.gumroad.com/l/englisheditor";
 
   // Load credits and history on mount
   useEffect(() => {
