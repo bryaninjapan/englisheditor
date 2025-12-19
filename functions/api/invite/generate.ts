@@ -1,5 +1,5 @@
 // @ts-ignore - D1Database type is defined in types.d.ts
-/// <reference path="../types.d.ts" />
+/// <reference path="../../types.d.ts" />
 
 // 生成邀请码的工具函数
 function generateInviteCode(): string {

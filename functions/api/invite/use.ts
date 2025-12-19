@@ -1,5 +1,5 @@
 // @ts-ignore - D1Database type is defined in types.d.ts
-/// <reference path="../types.d.ts" />
+/// <reference path="../../types.d.ts" />
 
 // 使用邀请码
 export async function onRequestPost(context: {

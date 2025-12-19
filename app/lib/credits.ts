@@ -12,6 +12,11 @@ const LAST_SYNC_KEY = 'credits_last_sync';
 
 // 从 localStorage 获取使用次数（客户端缓存）
 export function getLocalCredits(): CreditsInfo | null {
+  // 检查是否在浏览器环境
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return null;
+  }
+  
   try {
     const stored = localStorage.getItem(CREDITS_STORAGE_KEY);
     if (stored) {
@@ -25,6 +30,11 @@ export function getLocalCredits(): CreditsInfo | null {
 
 // 保存使用次数到 localStorage
 export function saveLocalCredits(credits: CreditsInfo): void {
+  // 检查是否在浏览器环境
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return;
+  }
+  
   try {
     localStorage.setItem(CREDITS_STORAGE_KEY, JSON.stringify(credits));
     localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
@@ -63,6 +73,17 @@ export async function syncCreditsFromServer(deviceFingerprint: string): Promise<
 
 // 初始化使用次数（如果是新用户，返回默认值）
 export function initCredits(): CreditsInfo {
+  // 检查是否在浏览器环境
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    // 服务端渲染时返回默认值
+    return {
+      remainingCredits: 0,
+      freeTrialsUsed: 0,
+      freeTrialsRemaining: 3,
+      totalAvailable: 3,
+    };
+  }
+  
   const local = getLocalCredits();
   if (local) {
     return local;
