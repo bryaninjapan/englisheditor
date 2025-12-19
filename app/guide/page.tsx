@@ -3,6 +3,7 @@
 import { ArrowLeft, Sparkles, Key, Gift, Users, CheckCircle2, AlertCircle, HelpCircle, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { GUMROAD_PRODUCT_URL } from "../lib/config";
 
 export default function GuidePage() {
   const router = useRouter();
@@ -206,16 +207,13 @@ export default function GuidePage() {
                       Buy an activation code from our Gumroad store or get one from your administrator.
                     </p>
                     <Link 
-                      href="https://your-username.gumroad.com/l/englisheditor"
+                      href={GUMROAD_PRODUCT_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block mt-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                       Purchase on Gumroad
                     </Link>
-                    <p className="text-xs text-gray-500 mt-2">
-                      💡 Update the link in <code className="bg-gray-100 px-1 rounded">app/lib/config.ts</code> after creating your Gumroad product
-                    </p>
                   </div>
                 </div>
 

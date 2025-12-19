@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertCircle, Sparkles, Key, ArrowLeft } from "lucide-react";
 import { generateDeviceFingerprint } from "../lib/deviceFingerprint";
+import { GUMROAD_PRODUCT_URL } from "../lib/config";
 import { cn } from "../lib/utils";
 
 export default function ActivatePage() {
@@ -158,7 +159,7 @@ export default function ActivatePage() {
               <div className="text-center pt-4 border-t border-gray-200">
                 <p className="text-sm text-gray-600 mb-3">Don't have an activation code?</p>
                 <a
-                  href="https://your-username.gumroad.com/l/englisheditor"
+                  href={GUMROAD_PRODUCT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors text-sm"
@@ -168,9 +169,6 @@ export default function ActivatePage() {
                   </svg>
                   Purchase on Gumroad
                 </a>
-                <p className="text-xs text-gray-500 mt-2">
-                  💡 Update the link in <code className="bg-gray-100 px-1 rounded">app/lib/config.ts</code> after creating your Gumroad product
-                </p>
               </div>
             </div>
           )}
