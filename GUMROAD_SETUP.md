@@ -97,20 +97,32 @@
    - Gumroad 会自动生成一个 URL，格式类似：`your-username.gumroad.com/l/englisheditor`
    - **复制这个 URL**，稍后需要在代码中使用
 
-2. **After purchase**:
-   - 选择 **"Show custom message"**
-   - 在消息框中输入：
+2. **After purchase**（购买后设置）:
+   
+   这里设置客户购买后看到的内容。根据你选择的交付方式：
+   
+   **如果选择了"Show custom message"（自定义消息）**：
+   - 在消息框中输入购买后说明（已在上面"产品类型"部分说明）
+   - 可以包含激活码占位符（如果使用 Gumroad 的自动生成功能）
+   
+   **如果选择了"Upload a file"（上传文件）**：
+   - 客户会收到你上传的文件
+   - 可以在文件中包含详细的激活说明
+   
+   **如果选择了"Nothing (for now)"（暂时不提供）**：
+   - 建议在 **"After purchase"** 消息中说明：
      ```
-     Thank you for your purchase!
+     感谢您的购买！
      
-     Your activation code is: [ACTIVATION_CODE]
+     我们会在 24 小时内通过邮件发送您的激活码。
+     请检查您的邮箱（包括垃圾邮件文件夹）。
      
-     To activate:
-     1. Visit: https://your-domain.pages.dev/activate
-     2. Enter your activation code
-     3. Start using the editor!
+     激活步骤：
+     1. 访问：https://your-domain.pages.dev/activate
+     2. 输入您收到的激活码
+     3. 开始使用编辑器！
      
-     If you have any questions, please contact support.
+     如有问题，请联系客服。
      ```
 
 3. **Product visibility**: 
@@ -139,7 +151,21 @@
 
 ### 更新代码中的 Gumroad 链接
 
-需要在以下文件中替换 Gumroad 链接：
+**重要**：创建 Gumroad 产品后，需要在代码中更新产品链接。
+
+#### 方法 1：使用配置文件（推荐）
+
+1. 打开 `app/lib/config.ts` 文件
+2. 找到 `GUMROAD_PRODUCT_URL` 常量
+3. 将占位符 URL 替换为你的实际 Gumroad 产品链接：
+   ```typescript
+   export const GUMROAD_PRODUCT_URL = "https://你的用户名.gumroad.com/l/englisheditor";
+   ```
+4. 保存文件并重新部署
+
+#### 方法 2：手动替换（如果未使用配置文件）
+
+需要在以下文件中搜索并替换 Gumroad 链接：
 
 1. **`app/page.tsx`** - 搜索 `gumroad` 并替换
 2. **`app/activate/page.tsx`** - 搜索 `gumroad` 并替换
@@ -147,13 +173,10 @@
 
 将以下内容：
 ```typescript
-href="https://your-gumroad-link.gumroad.com/l/englisheditor"
-```
-
-替换为你的实际 Gumroad 产品链接：
-```typescript
 href="https://your-username.gumroad.com/l/englisheditor"
 ```
+
+替换为你的实际 Gumroad 产品链接。
 
 ## 第五步：自动发送激活码（高级功能）
 
