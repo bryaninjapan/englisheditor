@@ -82,13 +82,63 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    // Check if token is stored
+    // Check if token is stored and verify it
     const stored = localStorage.getItem("admin_token");
     if (stored) {
       setToken(stored);
-      setIsAuthenticated(true);
+      // Verify token on mount
+      verifyToken(stored);
     }
   }, []);
+
+  const verifyToken = async (tokenToVerify: string) => {
+    try {
+      const response = await fetch("/admin/stats", {
+        headers: {
+          Authorization: `Bearer ${tokenToVerify}`,
+        },
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token is invalid, clear it
+          localStorage.removeItem("admin_token");
+          setToken("");
+          setIsAuthenticated(false);
+          return;
+        }
+        // Other errors, still invalid
+        localStorage.removeItem("admin_token");
+        setToken("");
+        setIsAuthenticated(false);
+        return;
+      }
+      
+      const responseText = await response.text();
+      try {
+        const data = JSON.parse(responseText);
+        if (data.success) {
+          // Token is valid
+          setIsAuthenticated(true);
+        } else {
+          // Invalid response
+          localStorage.removeItem("admin_token");
+          setToken("");
+          setIsAuthenticated(false);
+        }
+      } catch (parseError) {
+        // Invalid JSON response
+        localStorage.removeItem("admin_token");
+        setToken("");
+        setIsAuthenticated(false);
+      }
+    } catch (err) {
+      // Network error or other issues, clear token
+      localStorage.removeItem("admin_token");
+      setToken("");
+      setIsAuthenticated(false);
+    }
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -109,17 +159,65 @@ export default function AdminPage() {
     }
     
     setError(null);
-    // Store token
-    localStorage.setItem("admin_token", trimmedToken);
-    setToken(trimmedToken);
-    setIsAuthenticated(true);
-    showToast("Login successful!", "success");
+    setIsLoading(true);
     
-    // Load initial data
-    if (activeTab === "stats") {
-      loadStats();
-    } else if (activeTab === "list") {
-      loadCodes();
+    try {
+      // Verify token by making a test API call
+      const response = await fetch("/admin/stats", {
+        headers: {
+          Authorization: `Bearer ${trimmedToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError("Invalid admin token. Please check your token and try again.");
+          showToast("Invalid admin token. Please check your token and try again.", "error");
+          setIsLoading(false);
+          return;
+        }
+        const responseText = await response.text();
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Token is valid, parse response to ensure it's valid JSON
+      const responseText = await response.text();
+      try {
+        const data = JSON.parse(responseText);
+        if (!data.success) {
+          throw new Error(data.error || "Authentication failed");
+        }
+      } catch (parseError: any) {
+        throw new Error(`Invalid response from server: ${parseError.message}`);
+      }
+      
+      // Token is valid, store it and authenticate
+      localStorage.setItem("admin_token", trimmedToken);
+      setToken(trimmedToken);
+      setIsAuthenticated(true);
+      showToast("Login successful!", "success");
+      
+      // Load initial data
+      if (activeTab === "stats") {
+        loadStats();
+      } else if (activeTab === "list") {
+        loadCodes();
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to verify admin token";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
+      setIsAuthenticated(false);
+      localStorage.removeItem("admin_token");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -424,9 +522,19 @@ export default function AdminPage() {
             </div>
             <button
               onClick={handleLogin}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+              disabled={isLoading}
+              className={cn(
+                "w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+              )}
             >
-              Login
+              {isLoading ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Login"
+              )}
             </button>
           </div>
         </div>
