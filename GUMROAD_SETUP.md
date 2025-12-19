@@ -42,9 +42,53 @@
 - **Currency**: 选择货币（USD, EUR, GBP 等）
 
 #### 产品类型
-- 选择 **"Digital product"**
-- 在 **"What do customers receive?"** 部分：
-  - 选择 **"Nothing (for now)"** 或创建一个简单的文本文件说明
+- 选择 **"Digital product"**（数字产品）
+- 在 **"What do customers receive?"**（客户收到什么？）部分：
+  
+  **推荐方案 1：自定义消息（推荐）**
+  - 选择 **"Show custom message"**（显示自定义消息）
+  - 在消息框中输入以下内容：
+    ```
+    感谢您的购买！
+    
+    您的激活码是：[ACTIVATION_CODE]
+    
+    激活步骤：
+    1. 访问：https://your-domain.pages.dev/activate
+    2. 输入您的激活码
+    3. 开始使用编辑器！
+    
+    如有任何问题，请联系客服。
+    ```
+  - **注意**：Gumroad 会自动将 `[ACTIVATION_CODE]` 替换为实际的激活码（如果使用 Gumroad 的自动生成功能）
+  
+  **推荐方案 2：文本文件**
+  - 选择 **"Upload a file"**（上传文件）
+  - 创建一个文本文件（如 `activation-instructions.txt`），内容如下：
+    ```
+    感谢购买 Professional English Editor 激活码！
+    
+    您的激活码：请在购买后页面查看
+    
+    如何使用：
+    1. 访问 https://your-domain.pages.dev/activate
+    2. 输入您收到的激活码
+    3. 点击"激活"按钮
+    4. 开始使用编辑器！
+    
+    激活码将为您添加 100 次使用次数。
+    激活码无过期时间，可在最多 3 台设备上使用。
+    
+    如有问题，请联系客服。
+    ```
+  - 上传该文件作为购买后交付内容
+  
+  **推荐方案 3：手动管理（适合小规模）**
+  - 选择 **"Nothing (for now)"**（暂时不提供）
+  - 在购买后，手动在后台管理系统生成激活码
+  - 通过邮件或其他方式发送给客户
+  - **优点**：可以更好地控制激活码的生成和分配
+  - **缺点**：需要手动操作，不适合大规模销售
 
 ### 3. 配置产品设置
 
@@ -113,19 +157,98 @@ href="https://your-username.gumroad.com/l/englisheditor"
 
 ## 第五步：自动发送激活码（高级功能）
 
-### 使用 Gumroad Webhook（可选）
+### 方案对比
 
-如果你想在用户购买后自动发送激活码，可以设置 Gumroad Webhook：
+| 方案 | 优点 | 缺点 | 适用场景 |
+|------|------|------|----------|
+| **自定义消息** | 简单快速，无需额外开发 | 需要手动管理激活码 | 小规模销售 |
+| **上传文件** | 可以包含详细说明 | 需要手动创建和更新文件 | 中等规模 |
+| **Webhook 自动** | 完全自动化，可扩展 | 需要后端开发 | 大规模销售 |
 
-1. 在 Gumroad 产品设置中，找到 **"Webhooks"** 部分
-2. 添加 Webhook URL（需要创建一个 API endpoint 来接收购买通知）
-3. 当用户购买时，Gumroad 会发送 POST 请求到你的 Webhook
-4. 你的服务器可以：
-   - 生成激活码
-   - 通过邮件发送给用户
-   - 或显示在 Gumroad 的购买后页面
+### 使用 Gumroad Webhook（高级，推荐用于大规模销售）
 
-**注意**：这需要额外的后端开发工作。目前建议使用手动方式：在购买后页面显示激活码。
+如果你想在用户购买后自动生成并发送激活码，可以设置 Gumroad Webhook：
+
+#### 设置步骤
+
+1. **创建 Webhook Endpoint**
+   - 在你的 Cloudflare Workers 中创建一个新的 API endpoint
+   - 例如：`/api/gumroad-webhook`
+   - 这个 endpoint 需要：
+     - 验证 Gumroad 的签名（安全）
+     - 接收购买通知
+     - 生成激活码
+     - 存储到数据库
+     - 返回激活码给 Gumroad（显示在购买后页面）
+
+2. **在 Gumroad 中配置 Webhook**
+   - 进入产品设置页面
+   - 找到 **"Webhooks"** 或 **"Integrations"** 部分
+   - 添加 Webhook URL：`https://your-domain.pages.dev/api/gumroad-webhook`
+   - 选择触发事件：**"Sale"**（销售完成时）
+
+3. **Webhook 数据格式**
+   Gumroad 会发送 POST 请求，包含以下信息：
+   ```json
+   {
+     "sale_id": "xxx",
+     "email": "customer@example.com",
+     "price": "9.99",
+     "gumroad_fee": "0.70",
+     "currency": "usd",
+     "product_id": "xxx",
+     "purchaser_id": "xxx",
+     "created_at": "2024-01-01T00:00:00Z"
+   }
+   ```
+
+4. **实现自动生成激活码**
+   - Webhook 收到购买通知后
+   - 调用后台管理 API 生成激活码
+   - 将激活码返回给 Gumroad（显示在购买后页面）
+   - 或通过邮件发送给客户
+
+#### 示例 Webhook 实现（伪代码）
+
+```typescript
+// functions/api/gumroad-webhook.ts
+export async function onRequestPost(context) {
+  const { request, env } = context;
+  
+  // 1. 验证 Gumroad 签名
+  const signature = request.headers.get('X-Gumroad-Signature');
+  // ... 验证逻辑 ...
+  
+  // 2. 解析购买数据
+  const purchaseData = await request.json();
+  
+  // 3. 生成激活码（调用管理 API）
+  const activationCode = await generateActivationCode(env.DB);
+  
+  // 4. 存储购买记录
+  await storePurchaseRecord(env.DB, {
+    gumroadOrderId: purchaseData.sale_id,
+    email: purchaseData.email,
+    activationCode: activationCode,
+    price: purchaseData.price
+  });
+  
+  // 5. 返回激活码（Gumroad 会显示在购买后页面）
+  return new Response(JSON.stringify({
+    activation_code: activationCode,
+    instructions: "Visit https://your-domain.pages.dev/activate to activate"
+  }), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+```
+
+**注意**：
+- Webhook 需要验证 Gumroad 的签名以确保安全
+- 需要处理重复通知（Gumroad 可能会发送多次）
+- 建议记录所有购买记录以便追踪
+
+**目前建议**：如果刚开始销售，可以先使用"自定义消息"方案，等销售规模扩大后再考虑实现 Webhook 自动化。
 
 ## 第六步：测试购买流程
 
@@ -162,10 +285,36 @@ A: Gumroad 支持退款功能：
 
 ## 安全建议
 
-1. **激活码生成**：建议在后台管理系统中生成激活码，而不是在 Gumroad 中手动创建
-2. **激活码格式**：使用统一的格式（如：XXXX-XXXX-XXXX-XXXX）
-3. **记录购买**：在数据库中记录每个激活码对应的 Gumroad 订单 ID
-4. **验证机制**：确保激活码只能使用一次（或按设计的使用次数）
+1. **激活码生成**：
+   - ✅ 在后台管理系统中生成激活码（推荐）
+   - ✅ 使用统一的格式（如：XXXX-XXXX-XXXX-XXXX）
+   - ✅ 确保激活码的唯一性
+   - ❌ 不要在 Gumroad 中手动创建激活码（容易出错且难以管理）
+
+2. **购买记录**：
+   - 在数据库中记录每个激活码对应的 Gumroad 订单 ID
+   - 记录购买者邮箱（如果提供）
+   - 记录购买时间和价格
+   - 这样可以：
+     - 追踪销售情况
+     - 处理退款时撤销激活码
+     - 联系客户
+
+3. **激活码验证**：
+   - 确保激活码只能使用一次（或按设计的使用次数）
+   - 验证激活码格式
+   - 检查激活码状态（是否已被使用、是否过期等）
+
+4. **退款处理**：
+   - 如果客户申请退款，需要在后台管理系统中：
+     - 标记激活码为"已撤销"
+     - 从用户账户中扣除相应的使用次数（如果已激活）
+     - 记录退款原因和时间
+
+5. **数据备份**：
+   - 定期备份数据库
+   - 备份激活码列表
+   - 备份购买记录
 
 ## 下一步
 
