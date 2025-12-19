@@ -6,7 +6,7 @@ pages_build_output_dir = "out"
 [[d1_databases]]
 binding = "DB"
 database_name = "englisheditor-db"
-database_id = "c77cea79-01e5-48a9-9160-0b975bb064ef" # 需要在 Cloudflare Dashboard 创建数据库后填入
+database_id = "YOUR_DATABASE_ID_HERE" # 需要在 Cloudflare Dashboard 创建数据库后填入
 
 [env.production]
 compatibility_date = "2024-01-01"
@@ -14,5 +14,5 @@ compatibility_date = "2024-01-01"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "englisheditor-db"
-database_id = "c77cea79-01e5-48a9-9160-0b975bb064ef" # 需要在 Cloudflare Dashboard 创建数据库后填入
+database_id = "YOUR_DATABASE_ID_HERE" # 需要在 Cloudflare Dashboard 创建数据库后填入
 
