@@ -259,7 +259,7 @@ export async function onRequestPost(context) {
   // 5. 返回激活码（Gumroad 会显示在购买后页面）
   return new Response(JSON.stringify({
     activation_code: activationCode,
-    instructions: "Visit https://your-domain.pages.dev/activate to activate"
+    instructions: "访问 https://your-domain.pages.dev/activate 进行激活"
   }), {
     headers: { 'Content-Type': 'application/json' }
   });
