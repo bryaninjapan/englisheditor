@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, ChevronDown, Copy, FileText, Check, History, X, Clock } from "lucide-react";
+import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PROMPT_GENERAL, PROMPT_LEGAL } from "./lib/prompts";
 import { cn } from "./lib/utils";
 
-type ModelType = "gpt-4o" | "gpt-4o-mini" | "gemini-3-pro-preview" | "gemini-2.5-pro" | "gemini-2.5-flash" | "gemini-2.0-flash-exp" | "gemini-1.5-flash" | "gemini-1.5-pro";
+type ModelType = "gemini-3-pro-preview" | "gemini-2.5-pro" | "gemini-2.5-flash" | "gemini-2.0-flash-exp" | "gemini-1.5-flash" | "gemini-1.5-pro";
 
 interface HistoryRecord {
   id: string;
@@ -18,15 +18,13 @@ interface HistoryRecord {
   timestamp: number;
 }
 
-const MODELS: { id: ModelType; name: string; provider: "openai" | "google" }[] = [
-  { id: "gemini-3-pro-preview", name: "Gemini 3 Pro (Preview)", provider: "google" },
-  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "google" },
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "google" },
-  { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash (Exp)", provider: "google" },
-  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "google" },
-  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", provider: "google" },
-  { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai" },
+const MODELS: { id: ModelType; name: string }[] = [
+  { id: "gemini-3-pro-preview", name: "Gemini 3 Pro (Preview)" },
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+  { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash (Exp)" },
+  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
+  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
 ];
 
 export default function Home() {
@@ -34,35 +32,15 @@ export default function Home() {
   const [text, setText] = useState("");
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Model & Key State
   const [selectedModel, setSelectedModel] = useState<ModelType>("gemini-3-pro-preview");
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [geminiKey, setGeminiKey] = useState("");
-  const [tempOpenaiKey, setTempOpenaiKey] = useState("");
-  const [tempGeminiKey, setTempGeminiKey] = useState("");
-  
-  const [showSettings, setShowSettings] = useState(false);
   const [mode, setMode] = useState<"general" | "legal">("general");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Load API Keys and History from localStorage on mount
+  // Load History from localStorage on mount
   useEffect(() => {
-    const storedOpenaiKey = localStorage.getItem("openai_api_key");
-    const storedGeminiKey = localStorage.getItem("gemini_api_key");
-    if (storedOpenaiKey) {
-      setOpenaiKey(storedOpenaiKey);
-      setTempOpenaiKey(storedOpenaiKey);
-    }
-    if (storedGeminiKey) {
-      setGeminiKey(storedGeminiKey);
-      setTempGeminiKey(storedGeminiKey);
-    }
-
-    // Load history
     const storedHistory = localStorage.getItem("editor_history");
     if (storedHistory) {
       try {
@@ -74,42 +52,8 @@ export default function Home() {
     }
   }, []);
 
-  // Save API Keys
-  const handleSaveKeys = () => {
-    if (tempOpenaiKey.trim()) {
-      localStorage.setItem("openai_api_key", tempOpenaiKey.trim());
-      setOpenaiKey(tempOpenaiKey.trim());
-    } else {
-      localStorage.removeItem("openai_api_key");
-      setOpenaiKey("");
-    }
-
-    if (tempGeminiKey.trim()) {
-      localStorage.setItem("gemini_api_key", tempGeminiKey.trim());
-      setGeminiKey(tempGeminiKey.trim());
-    } else {
-      localStorage.removeItem("gemini_api_key");
-      setGeminiKey("");
-    }
-
-    setShowSettings(false);
-    setError("");
-  };
-
-  const getActiveKey = () => {
-    const provider = MODELS.find((m) => m.id === selectedModel)?.provider;
-    return provider === "openai" ? openaiKey : geminiKey;
-  };
-
   // Handle Polishing
   const handlePolishing = async () => {
-    const activeKey = getActiveKey();
-
-    if (!activeKey) {
-      setShowSettings(true);
-      setError(`Please set an API Key for ${MODELS.find((m) => m.id === selectedModel)?.provider === "openai" ? "OpenAI" : "Google Gemini"}.`);
-      return;
-    }
     if (!text.trim()) {
       alert("Please enter some text to polish.");
       return;
@@ -121,66 +65,27 @@ export default function Home() {
 
     try {
       const systemPrompt = mode === "legal" ? PROMPT_LEGAL : PROMPT_GENERAL;
-      const provider = MODELS.find((m) => m.id === selectedModel)?.provider;
 
-      let content = "";
+      // Call Cloudflare Worker API
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: text,
+          systemPrompt: systemPrompt,
+          model: selectedModel,
+        }),
+      });
 
-      if (provider === "google") {
-        let modelId: string = selectedModel;
-        // Fix for specific alias behavior if needed, otherwise pass ID directly
-        if (selectedModel === "gemini-1.5-flash") modelId = "gemini-1.5-flash-latest";
-        if (selectedModel === "gemini-1.5-pro") modelId = "gemini-1.5-pro-latest";
-        // Gemini 2.5 and 3 typically use the exact ID provided
-        
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${activeKey}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemPrompt }]
-            },
-            contents: [
-              {
-                parts: [{ text: text }]
-              }
-            ]
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error?.message || "Failed to fetch response from Google Gemini.");
-        }
-        const data = await response.json();
-        content = data.candidates?.[0]?.content?.parts?.[0]?.text || "No content returned.";
-
-      } else {
-        // OpenAI
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${activeKey}`,
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: text },
-            ],
-            temperature: 0.7,
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error?.message || "Failed to fetch response from OpenAI.");
-        }
-        const data = await response.json();
-        content = data.choices[0]?.message?.content || "No content returned.";
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
+
+      const data = await response.json();
+      const content = data.content || "No content returned.";
 
       setResult(content);
 
@@ -315,16 +220,6 @@ export default function Home() {
               )}
             </button>
 
-            <button
-              onClick={() => setShowSettings(true)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors relative"
-              title="Settings"
-            >
-              <Settings size={20} />
-              {!getActiveKey() && (
-                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
-              )}
-            </button>
           </div>
         </div>
       </header>
@@ -402,11 +297,9 @@ export default function Home() {
                 disabled={isLoading}
                 className={cn(
                   "w-full py-3 px-4 rounded-xl font-semibold text-white shadow-md transition-all flex items-center justify-center gap-2",
-                  !getActiveKey() 
-                    ? "bg-gray-400 cursor-not-allowed" 
-                    : isLoading
-                      ? "bg-blue-400 cursor-wait"
-                      : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg active:transform active:scale-[0.98]"
+                  isLoading
+                    ? "bg-blue-400 cursor-wait"
+                    : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg active:transform active:scale-[0.98]"
                 )}
               >
                 {isLoading ? (
@@ -421,11 +314,6 @@ export default function Home() {
                   </>
                 )}
               </button>
-              {!getActiveKey() && (
-                <p className="text-xs text-center text-red-500 mt-2">
-                  * API Key for {MODELS.find(m => m.id === selectedModel)?.name} required.
-                </p>
-              )}
             </div>
           </div>
 
@@ -497,67 +385,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-gray-900">Settings</h2>
-              <button 
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              
-              {/* Google Gemini Key */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Google Gemini API Key</label>
-                <input
-                  type="password"
-                  value={tempGeminiKey}
-                  onChange={(e) => setTempGeminiKey(e.target.value)}
-                  placeholder="AIza..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                />
-              </div>
-
-              {/* OpenAI Key */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">OpenAI API Key</label>
-                <input
-                  type="password"
-                  value={tempOpenaiKey}
-                  onChange={(e) => setTempOpenaiKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                />
-              </div>
-
-              {error && (
-                 <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-start gap-2">
-                   <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                   {error}
-                 </div>
-              )}
-
-              <button
-                onClick={handleSaveKeys}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                Save Changes
-              </button>
-              
-              <p className="text-xs text-gray-500 text-center">
-                Keys are stored locally in your browser. Leave blank to remove.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* History Sidebar */}
       {showHistory && (
