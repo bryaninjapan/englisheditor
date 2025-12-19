@@ -741,39 +741,18 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="bg-white p-4">
-                    {/* Gumroad Overlay Button */}
+                    {/* Gumroad Purchase Button */}
                     <a
                       href={GUMROAD_PRODUCT_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block w-full"
-                      onClick={(e) => {
-                        // Open Gumroad in overlay mode
-                        e.preventDefault();
-                        window.open(
-                          `${GUMROAD_PRODUCT_URL}?wanted=true&embed=true`,
-                          'gumroad-overlay',
-                          'width=600,height=700,scrollbars=yes,resizable=yes'
-                        );
-                      }}
                     >
                       <button className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2">
                         <Sparkles size={20} />
                         <span>Purchase on Gumroad</span>
                       </button>
                     </a>
-                    
-                    {/* Alternative: Direct Link */}
-                    <div className="mt-4 text-center">
-                      <a
-                        href={GUMROAD_PRODUCT_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-gray-600 hover:text-gray-900 underline"
-                      >
-                        Or open in new tab
-                      </a>
-                    </div>
                   </div>
                 </div>
               </div>
