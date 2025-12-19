@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock, Key, Gift, Users } from "lucide-react";
+import { Eraser, CheckCircle2, AlertCircle, Sparkles, Scale, Type, Copy, FileText, Check, History, X, Clock, Key, Gift, Users, BookOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PROMPT_GENERAL, PROMPT_LEGAL } from "./lib/prompts";
@@ -339,6 +339,15 @@ export default function Home() {
                 Activate
               </button>
             )}
+
+            {/* Guide Button */}
+            <button
+              onClick={() => router.push("/guide")}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              title="User Guide"
+            >
+              <BookOpen size={20} />
+            </button>
             
             <button
               onClick={() => setShowHistory(!showHistory)}
